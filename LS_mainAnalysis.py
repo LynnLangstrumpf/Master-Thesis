@@ -437,7 +437,7 @@ def main():
     #those settings should be included in the GUI
     max_tau_Gaussian_in_ms = 1000
     BinSeconds = 10
-    Hz_Aquisition = 1800
+    Hz_Aquisition = 12000
     LineTime = 1000 / Hz_Aquisition  # in millisec
     Pixellength = 50  # nm
     starttime = time.time()
