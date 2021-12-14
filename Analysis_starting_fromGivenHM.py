@@ -66,6 +66,8 @@ def GaussianFit(STICS, timeline):
     for tauindex, tau in enumerate(timeline):
         y = np.array(STICSMSD[tauindex, :])
         y = y.astype(float)
+        y = y - np.min(y)
+        y = y / np.max(y)
         tau = tau.astype(float)
         plt.plot(x, y)
         cmodel = lmfit.models.ConstantModel()

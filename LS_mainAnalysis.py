@@ -1,3 +1,4 @@
+#copyright Pauline Löffler
 from pathlib import Path
 import skimage.io as skio  # read images
 import numpy as np
@@ -24,7 +25,7 @@ def findData():
 def readFile():
     """
     reads in the tif file of the LS to a ndarray of pixel intensities
-    :return: full Line scan as Matrix
+    :return: full Line scan as Matrix (space x time)
     """
     paths_LS = findData()
     file = open('AnalyzedData.csv', 'a')
@@ -185,8 +186,6 @@ def Generate_timeline(LS):
             timepoint * LineTime)  # aquisition at 1800Hz means approx. 0,556 millisec per line
     LS_tx = np.c_[
         LS_tx, LS]  # is now a matrix: column1= time in millisek column2= intensities ...
-    # InputData = pd.DataFrame(LS_tx)
-    # InputData.to_csv(path_or_buf='InputData.csv', sep=';', index=False)
     return LS_tx
 
 
@@ -224,6 +223,8 @@ def GaussianFit(STICS, timeline):
     for tauindex, tau in enumerate(timeline):
         y = np.array(STICSMSD[tauindex, :])
         y = y.astype(float)
+        y = y - np.min(y)
+        y = y / np.max(y)
         tau = tau.astype(float)
         plt.plot(x, y)
         cmodel = lmfit.models.ConstantModel()
@@ -242,7 +243,7 @@ def GaussianFit(STICS, timeline):
         result = cgmodel.fit(y, x=x, c=c, amplitude=amp, center=cen, sigma=sig)
         params = dict(result.values)
         sigma = params['sigma']
-        MSD = (sigma * Pixellength) ** 2
+        MSD = (sigma * Pixellength*np.sqrt(2)) ** 2
         Tau_MSD.append([tau, MSD])
         if tauindex <= 1000:
             if tauindex % 25 == 0:
@@ -292,8 +293,8 @@ def GaussianFit(STICS, timeline):
         Tau_mean_previous = Tau_mean
         StartIndex = Endindex
     Tau_MSD = np.array(MSDMean)
-    Tau_MSD_Ex = pd.DataFrame(Tau_MSD, columns=['tau', 'MSD_µm^2','SD'])
-    Tau_MSD_Ex.to_csv(path_or_buf='Export/'+identifier + '_TauMSD.csv', header=['tau', 'MSD_nm^2', 'SD'], sep=';', index=False)
+    Tau_MSD_Ex = pd.DataFrame(Tau_MSD, columns=['tau_s', 'MSD_µm^2','SD'])
+    Tau_MSD_Ex.to_csv(path_or_buf='Export/'+identifier + '_TauMSD.csv', header=['tau_s', 'MSD_µm^2', 'SD'], sep=';', index=False)
     plt.errorbar(Tau_MSD[:, 0], Tau_MSD[:, 1])
     plt.show()
     return
@@ -412,6 +413,8 @@ def FitACFunctionGetD(STICS,plotter):
     if plotter == 1:
         plt.plot(taus, result.best_fit)
         plt.xscale('log')
+        plt.xlabel('time [ms]')
+        plt.ylabel('G(tau) normalized')
         text = 'D when calculated by AC over x=0:\n' + str(D/1000) + 'µm^2/s'
         plt.text(1, 0, text, fontsize=10)
         fig1 = plt.gcf()
@@ -439,7 +442,7 @@ def main():
     Pixellength = 50  # nm
     starttime = time.time()
     print(starttime)
-    LS = np.array(readFile())
+    LS = np.array(readFile()) #File imported to Matrix
     identifier = input('Give an identifier for flagging the data exports')
     SumPlotArray_x(LS)
     xstart = input('Give starting point [nm]') or 0
@@ -463,14 +466,11 @@ def main():
     endtime = time.time()
     print(endtime - starttime)
     ACC = Generate_timeline(ACC)
+    ACC = ACC[1:, :]  # remove tau=0 element as this contains the sum of the FFT
     timeline = ACC[:, 0]
-    #ACC = ACC[1:, :]
-    #ACC = Averaging_Gtau_over_Tau(ACC)
-    #ACC = np.array(ACC)
-    #STIC = Generate_timeline(STIC)
     PlotLog = int(np.log10(BinSeconds * 1000))
     Bins = np.logspace(-1, PlotLog, num=100, endpoint=False, base=10)
-    StartIndex = 1
+    StartIndex = 0
     Tau_mean_previous = 0
     BinnedSTICSMean = []
     for Bin in Bins:
@@ -479,8 +479,8 @@ def main():
                 Endindex = ACindex
                 break
         Tau_mean = np.mean(timeline[StartIndex:Endindex + 1])
-        G_mean = np.mean(ACC[StartIndex:Endindex + 1])
-        G_SD = np.std(ACC[StartIndex:Endindex + 1])
+        G_mean = np.mean(ACC[StartIndex:Endindex + 1, 1])
+        G_SD = np.std(ACC[StartIndex:Endindex + 1, 1])
         if not Tau_mean_previous == Tau_mean:
             BinnedSTICSMean.append([Tau_mean, G_mean, G_SD])
         Tau_mean_previous = Tau_mean
@@ -491,11 +491,12 @@ def main():
     xNullEx.to_csv(path_or_buf='Export/'+identifier + '_xNullEx.csv',
                    header=['tau', 'AC_Average', 'SD'], sep=';', index=False)
     #
+    ACC=BinnedSTICSMean[:, :2]
     # to only look at a certain area for fitting: cut the binned array accordingly
     AreatoFitms = BinSeconds*1000
-    absolute_val_array = np.abs(ACC[:] - AreatoFitms)
+    absolute_val_array = np.abs(ACC[:, :1] - AreatoFitms)
     smallest_difference_index = absolute_val_array.argmin()
-    STICforD = ACC[:smallest_difference_index]
+    STICforD = ACC[:smallest_difference_index, :]
     D = FitACFunctionGetD(STICforD, 1)
     print(D, 'nm^2/ms')
     D = D/1000
