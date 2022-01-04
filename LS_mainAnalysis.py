@@ -1,4 +1,14 @@
 #copyright Pauline Löffler
+#----------------------------------------------------------------
+'''
+This script is designed to read in a LS as a one-paged tif file and analyses
+this on the underlying diffusion behaviour. Be sure to recheck the correct
+settings correspondent to the acquisition settings in order to obtain reliable
+results.
+'''
+
+
+
 from pathlib import Path
 import skimage.io as skio  # read images
 import numpy as np
@@ -104,7 +114,7 @@ def CalculateSTICS(xstart, xstop, LS):
 
     LStoBeAnalyzed = LS[:,
                      xstart:xstop] # excludes Vesicels etc depending on user input
-    #Now let the user check which time intervall shall be considered (because of bleaching etc)
+    #Now let the user check which time interval shall be considered (because of bleaching etc)
     SumPlotArray_t(LStoBeAnalyzed)
     tstart = input('Give starting time [ms]') or 0
     file = open('AnalyzedData.csv', 'a')
@@ -119,6 +129,9 @@ def CalculateSTICS(xstart, xstop, LS):
     if not tstop == -1:
         tstop = int(float(tstop)/ LineTime)
     LStoBeAnalyzed = LStoBeAnalyzed[tstart:tstop, :]  # excludes depending on user input
+    #--------------------------------------------------------------------------
+    #calculation of the STICS function
+    #--------------------------------------------------------------------------
     StartTimepoint = 0
     BinCount = 0
     while StartTimepoint < LStoBeAnalyzed.shape[0]:
@@ -140,6 +153,9 @@ def CalculateSTICS(xstart, xstop, LS):
         print(StartTimepoint)
     STIC = STIC / BinCount
     print(STIC)
+    #--------------------------------------------------------------------------
+    # HM graph generation and STICS export
+    #--------------------------------------------------------------------------
     hmapSTIC = STIC
     xBorder = int(hmapSTIC.shape[1] / 2)
     tauBorder = int(hmapSTIC.shape[0] / 2)
@@ -165,7 +181,9 @@ def CalculateSTICS(xstart, xstop, LS):
     fig1 = plt.gcf()
     fig1.savefig('Export/'+identifier + '_STICS_HM.jpeg', dpi=300)
     plt.show()
+    #--------------------------------------------------------------------------
     # getting the autocorrelation Curve: take x=0 part of STICS and normalize
+    #--------------------------------------------------------------------------
     ACC = STIC[:, 0]
     ACC = ACC[:int(ACC.shape[0] / 2)]
     ACC = ACC - np.amin(ACC)
@@ -209,6 +227,7 @@ def GaussianFit(STICS, timeline):
 
     maxTimelineIndex = int(max_tau_Gaussian_in_ms / LineTime)
     Tau_MSD = []
+    Tau_sigma = []
     STICSMSD = np.flipud(STICS)
     x = np.array(range(STICS.shape[1]))
     plt.plot(x, STICSMSD[0, :])
@@ -220,11 +239,12 @@ def GaussianFit(STICS, timeline):
     BestFitList = []
     tauaxis = []
     Tau_mean_previous = 0
+    #--------------------------------------------------------------------------
+    #fitting over every tau by first getting a guess due to individual constant Gaussian fitting and than fitting the combined model
+    #--------------------------------------------------------------------------
     for tauindex, tau in enumerate(timeline):
         y = np.array(STICSMSD[tauindex, :])
         y = y.astype(float)
-        #y = y - np.min(y)
-        #y = y / np.max(y)
         tau = tau.astype(float)
         plt.plot(x, y)
         cmodel = lmfit.models.ConstantModel()
@@ -243,18 +263,25 @@ def GaussianFit(STICS, timeline):
         result = cgmodel.fit(y, x=x, c=c, amplitude=amp, center=cen, sigma=sig)
         params = dict(result.values)
         sigma = params['sigma']
-        MSD = (sigma * Pixellength * 2) ** 2
+        MSD = 2*((sigma * Pixellength) ** 2)
         Tau_MSD.append([tau, MSD])
-        if tauindex <= 1000:
+        Tau_sigma.append([tau, sigma])
+        if tauindex <= 1000: #for the 3D representation
             if tauindex % 25 == 0:
                 BestFitList.append([x, result.best_fit])
                 tauaxis.append(tau)
-        if tau < 1:
+        if tau < 1: # as optical user feedback of the fitting quality
             plt.plot(x, result.best_fit)
             plt.show()
             plt.clf()
         print(tauindex)
+    Tau_sigma_Ex = pd.DataFrame(Tau_sigma, columns=['tau_s', 'sigma'])
+    Tau_sigma_Ex.to_csv(path_or_buf='Export/' + identifier + '_Tausigma.csv',
+                      header=['tau_s', 'MSD_µm^2'], sep=';', index=False)
     fig = plt.figure()
+    #--------------------------------------------------------------------------
+    #Generating the 3D graph
+    #--------------------------------------------------------------------------
     ax = fig.add_subplot(111, projection='3d')
     zs = 0
     for gausfit in BestFitList:
@@ -270,6 +297,9 @@ def GaussianFit(STICS, timeline):
     fig1 = plt.gcf()
     fig1.savefig('Export/'+identifier + '_Gaussians3D.jpeg', dpi=300)
     plt.show()
+    #--------------------------------------------------------------------------
+    #Averaging the MSD in log-bins, setting the units to s and µm² and exporting the MSD curve as csv
+    #--------------------------------------------------------------------------
     Tau_MSD = np.array(Tau_MSD)
     PlotLog = int(np.log10(BinSeconds * 1000))
     Bins = np.logspace(-1, PlotLog, num=100, endpoint=False, base=10)
@@ -331,7 +361,7 @@ def SumPlotArray_x(LS):
     plt.ylabel('Intensity')
     plt.grid(True)
     fig1 = plt.gcf()
-    fig1.savefig('Export/'+identifier + '_Intensity_x_Plot.svg')
+    fig1.savefig('Export/'+identifier + '_Intensity_x_Plot.png', dpi=600)
     plt.show()
     plt.clf()
     return
@@ -370,6 +400,8 @@ def SumPlotArray_t(LS):
     plt.ylabel('Intensity')
     plt.grid(True)
     fig1 = plt.gcf()
+    fig1 = plt.gcf()
+    #fig1.savefig('Export/' + identifier + '_Intensity_t_Plot.png',dpi=600)
     fig1.savefig('Export/'+identifier + '_Intensity_t_Plot.svg')
     plt.show()
     plt.clf()
@@ -434,19 +466,24 @@ def main():
     global Pixellength
     global max_tau_Gaussian_in_ms
     global identifier
-    #those settings should be included in the GUI
+    #--------------------------------------------------------------------------
+    #those settings should be included in the GUI and need to be checked by the user
+    #--------------------------------------------------------------------------
     max_tau_Gaussian_in_ms = 1000
     BinSeconds = 10
     Hz_Aquisition = 12000
     LineTime = 1000 / Hz_Aquisition  # in millisec
     Pixellength = 50  # nm
+    #--------------------------------------------------------------------------
+    # start of the analysis
+    #--------------------------------------------------------------------------
     starttime = time.time()
     print(starttime)
-    LS = np.array(readFile()) #File imported to Matrix
+    LS = np.array(readFile()) # File imported to Matrix
     identifier = input('Give an identifier for flagging the data exports')
-    SumPlotArray_x(LS)
+    SumPlotArray_x(LS) # for excluding inhomogeneities
     xstart = input('Give starting point [nm]') or 0
-    file = open('AnalyzedData.csv', 'a')
+    file = open('AnalyzedData.csv', 'a') # logging user settings for reproducibility
     file.write('xstart:' + str(xstart) + '\n')
     file.close()
     if not xstart == 0:
@@ -460,11 +497,17 @@ def main():
     if not xstop == -1:
         xstop = int(xstop)
         xstop = int(xstop / Pixellength)
+    #--------------------------------------------------------------------------
+    # actual STICS calculation
+    #--------------------------------------------------------------------------
     ACCSTICS = CalculateSTICS(xstart, xstop, LS)
     ACC = ACCSTICS[0]
     STICS = ACCSTICS[1]
     endtime = time.time()
     print(endtime - starttime)
+    # -------------------------------------------------------------------------
+    # Bins and exports the AC curve as csv for the user
+    # -------------------------------------------------------------------------
     ACC = Generate_timeline(ACC)
     ACC = ACC[1:, :]  # remove tau=0 element as this contains the sum of the FFT
     timeline = ACC[:, 0]
@@ -490,10 +533,11 @@ def main():
                            columns=['tau', 'G_tau_Average', 'SD'])
     xNullEx.to_csv(path_or_buf='Export/'+identifier + '_xNullEx.csv',
                    header=['tau', 'AC_Average', 'SD'], sep=';', index=False)
-    #
     ACC=BinnedSTICSMean[:, :2]
-    # to only look at a certain area for fitting: cut the binned array accordingly
-    AreatoFitms = BinSeconds*1000
+    # -------------------------------------------------------------------------
+    # Fitting of the Diffusion models over the AC curve for D extraction
+    # -------------------------------------------------------------------------
+    AreatoFitms = BinSeconds*1000 # to only look at a certain area for fitting: cut the binned array accordingly
     absolute_val_array = np.abs(ACC[:, :1] - AreatoFitms)
     smallest_difference_index = absolute_val_array.argmin()
     STICforD = ACC[:smallest_difference_index, :]
@@ -501,6 +545,9 @@ def main():
     print(D, 'nm^2/ms')
     D = D/1000
     print(D, 'µm^2/s')
+    #--------------------------------------------------------------------------
+    # Gaussian fitting and MSD extraction
+    #--------------------------------------------------------------------------
     GaussianFit(STICS, timeline)
 
 

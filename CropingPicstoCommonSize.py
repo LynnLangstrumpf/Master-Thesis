@@ -1,3 +1,8 @@
+#copyright Pauline Löffler
+"""
+NOTE: The way this is implemented requires the user to be sure the data was acquired with identical pixel-size and Hz Acquisition speed as I do not check or correct for it!
+Allows the user to crop the HM to a common size for easy side-by-side comparison
+"""
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,7 +19,7 @@ def findData():
     return paths_LS
 
 
-def loadingArrayAndSortByMatchingTimelines(path_LS):
+def loadingArrayAndCroppingToCommonSize(path_LS):
     """
     Checks for minimal HM shape and crops and exports all HM accordingly as JPG and npy
     :return: None
@@ -42,14 +47,14 @@ def loadingArrayAndSortByMatchingTimelines(path_LS):
     xminhalf = int(minShapex/2)
     for HM in path_LS:
         hmap = np.load(HM)
-        HM = str(HM)
+        HM = str(HM) #extracting the name
         HM = HM.replace('data_Crop\\', '')
         HM = HM.replace('.npy', '')
         middle = round(hmap.shape[1]/2)
         xlower = middle - xminhalf
         xupper = middle + xminhalf
-        hmap = hmap[:minShapetau,xlower:xupper]
-        np.save('Export/'+HM+'cropped.npy', hmap)
+        hmap = hmap[:minShapetau,xlower:xupper] #cutting it to the chosen size
+        np.save('Export/'+HM+'cropped.npy', hmap) #saving it as 'cropped'
         cs = plt.contourf(np.flipud(hmap), cmap='inferno', levels=100)
         cs.axes.set_xlabel('x position [µm]')
         cs.axes.set_ylabel('tau [ms]')
@@ -57,7 +62,7 @@ def loadingArrayAndSortByMatchingTimelines(path_LS):
         xBorderh = int(xBorder / 2)
         xticks = []
         for xtick in range(-xBorderh, xBorderh, 10):
-            xtick = xtick * 50 / 1000  # converting to µm as this is wanted as standard
+            xtick = xtick * 50 / 1000  # converting to µm
             xticks.append(xtick)
         xtickpos = range(0, xBorder, 10)
         cs.axes.set_xticks(xtickpos)
@@ -73,7 +78,7 @@ def loadingArrayAndSortByMatchingTimelines(path_LS):
 
 def main():
     paths = findData()
-    loadingArrayAndSortByMatchingTimelines(paths)
+    loadingArrayAndCroppingToCommonSize(paths)
 
 
 if __name__ == "__main__":

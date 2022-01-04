@@ -1,5 +1,6 @@
+#copyright Pauline Löffler
 """
-NOTE: The way this is implemented requires the user to be sure the data was acquired with identical Pixel-size and Hz Acquisition speed as I do not check or correct for it!
+NOTE: The way this is implemented requires the user to be sure the data was acquired with identical pixel-size and Hz Acquisition speed as I do not check or correct for it!
 As the HMs are of different x sizes, depending on the chosen x interval in the analysis --> the averaged HM will be cropped to fit the smallest HM
 """
 
@@ -21,8 +22,7 @@ def findData():
 
 def loadingArrayAndSortByMatchingTimelines(path_LS):
     """
-    Theoretically all time lines should be the same as there is no reason to change that parameter when analyzing one batch of supposedly similar behaviour
-    Also the tau Interval steps need to be the same as they depend on acquisition speed. Thus checking for the shape in tau direction should do the trick.
+    The tau Interval steps need to be the same as they depend on acquisition speed. Thus checking for the shape in tau direction should do the trick.
     :return:
     """
     readHMNumber = 0
@@ -41,6 +41,9 @@ def loadingArrayAndSortByMatchingTimelines(path_LS):
             readHMNumber = readHMNumber + 1
     print('The minimal heatmap shape to be used is:',minShapetau, 'x', minShapex)
     readHMNumber = 0
+    #--------------------------------------------------------------------------
+    # each and every HM is cut from x=0 (middle) to the common new size
+    #--------------------------------------------------------------------------
     xminhalf = int(minShapex/2)
     for HM in path_LS:
         hmap = np.load(HM)

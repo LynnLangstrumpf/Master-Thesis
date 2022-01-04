@@ -20,3 +20,6 @@ Task*/
 *.svg
 *.csv
 *.pdf
+/ReadinHMPaolotonpy.py
+/data_Crop/
+/data_Average/

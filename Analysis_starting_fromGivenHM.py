@@ -1,3 +1,13 @@
+#copyright Pauline Löffler
+#----------------------------------------------------------------
+'''
+This script is designed to read in an averaged HM and analyses
+this on the underlying diffusion behaviour. Be sure to recheck the correct
+settings correspondent to the acquisition settings in order to obtain reliable
+results.
+'''
+
+
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -63,11 +73,14 @@ def GaussianFit(STICS, timeline):
     BestFitList = []
     tauaxis = []
     Tau_mean_previous = 0
+    #--------------------------------------------------------------------------
+    #fitting over every tau by first getting a guess due to individual constant Gaussian fitting and than fitting the combined model
+    #--------------------------------------------------------------------------
     for tauindex, tau in enumerate(timeline):
         y = np.array(STICSMSD[tauindex, :])
         y = y.astype(float)
-        y = y - np.min(y)
-        y = y / np.max(y)
+        #y = y - np.min(y)
+        #y = y / np.max(y)
         tau = tau.astype(float)
         plt.plot(x, y)
         cmodel = lmfit.models.ConstantModel()
@@ -86,7 +99,7 @@ def GaussianFit(STICS, timeline):
         result = cgmodel.fit(y, x=x, c=c, amplitude=amp, center=cen, sigma=sig)
         params = dict(result.values)
         sigma = params['sigma']
-        MSD = (sigma * Pixellength) ** 2
+        MSD = (sigma * Pixellength ) ** 2
         Tau_MSD.append([tau, MSD])
         if tauindex <= 1000:
             if tauindex % 25 == 0:
@@ -98,6 +111,9 @@ def GaussianFit(STICS, timeline):
             plt.clf()
         print(tauindex)
     fig = plt.figure()
+    #--------------------------------------------------------------------------
+    #Generating the 3D graph
+    #--------------------------------------------------------------------------
     ax = fig.add_subplot(111, projection='3d')
     zs = 0
     for gausfit in BestFitList:
@@ -113,6 +129,9 @@ def GaussianFit(STICS, timeline):
     fig1 = plt.gcf()
     fig1.savefig('Export/'+identifier + '_Gaussians3D.jpeg', dpi=300)
     plt.show()
+    #--------------------------------------------------------------------------
+    #Averaging the MSD in log-bins, setting the units to s and µm² and exporting the MSD curve as csv
+    #--------------------------------------------------------------------------
     Tau_MSD = np.array(Tau_MSD)
     PlotLog = int(np.log10(BinSeconds * 1000))
     Bins = np.logspace(-1, PlotLog, num=100, endpoint=False, base=10)
@@ -137,7 +156,7 @@ def GaussianFit(STICS, timeline):
         StartIndex = Endindex
     Tau_MSD = np.array(MSDMean)
     Tau_MSD_Ex = pd.DataFrame(Tau_MSD, columns=['tau', 'MSD_nm^2','SD'])
-    Tau_MSD_Ex.to_csv(path_or_buf='Export/'+identifier + '_TauMSD.csv', header=['tau', 'MSD_nm^2', 'SD'], sep=';', index=False)
+    Tau_MSD_Ex.to_csv(path_or_buf='Export/'+identifier + '_TauMSD.csv', header=['tau', 'MSD_µm^2', 'SD'], sep=';', index=False)
     plt.errorbar(Tau_MSD[:, 0], Tau_MSD[:, 1])
     plt.show()
     return
@@ -150,17 +169,25 @@ def main():
     global Pixellength
     global max_tau_Gaussian_in_ms
     global identifier
-
+#--------------------------------------------------------------------------
+#those settings should be included in the GUI and need to be checked by the user
+#--------------------------------------------------------------------------
     max_tau_Gaussian_in_ms = 1000
     BinSeconds = 10
     Hz_Aquisition = 1800
     LineTime = 1000 / Hz_Aquisition  # in millisec
     Pixellength = 50  # nm
+#--------------------------------------------------------------------------
+# start of the analysis
+#--------------------------------------------------------------------------
     identifier = input('Give an identifier for flagging the data exports')
     file = open('AnalyzedData.csv', 'a')
     file.write('Analysis File Identifier:' + identifier + '\n')
     file.close()
     path = findData()
+#--------------------------------------------------------------------------
+# Gaussian fitting and MSD extraction
+#--------------------------------------------------------------------------
     STICGaus = np.load(path)
     timeline = Generate_timeline(STICGaus)
     timeline = timeline[:,0]
