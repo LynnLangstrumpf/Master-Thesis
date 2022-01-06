@@ -263,7 +263,7 @@ def GaussianFit(STICS, timeline):
         result = cgmodel.fit(y, x=x, c=c, amplitude=amp, center=cen, sigma=sig)
         params = dict(result.values)
         sigma = params['sigma']
-        MSD = 2*((sigma * Pixellength) ** 2)
+        MSD = 2*((sigma * Pixellength )** 2)
         Tau_MSD.append([tau, MSD])
         Tau_sigma.append([tau, sigma])
         if tauindex <= 1000: #for the 3D representation
@@ -471,7 +471,7 @@ def main():
     #--------------------------------------------------------------------------
     max_tau_Gaussian_in_ms = 1000
     BinSeconds = 10
-    Hz_Aquisition = 12000
+    Hz_Aquisition = 1800
     LineTime = 1000 / Hz_Aquisition  # in millisec
     Pixellength = 50  # nm
     #--------------------------------------------------------------------------

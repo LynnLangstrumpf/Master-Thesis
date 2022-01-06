@@ -99,7 +99,7 @@ def GaussianFit(STICS, timeline):
         result = cgmodel.fit(y, x=x, c=c, amplitude=amp, center=cen, sigma=sig)
         params = dict(result.values)
         sigma = params['sigma']
-        MSD = (sigma * Pixellength ) ** 2
+        MSD = 2*((sigma * Pixellength )** 2)
         Tau_MSD.append([tau, MSD])
         if tauindex <= 1000:
             if tauindex % 25 == 0:
