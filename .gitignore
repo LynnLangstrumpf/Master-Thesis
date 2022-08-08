@@ -1,25 +1,10 @@
 venv/
 data/
-Task*/
-/G(tau)plot.png
-/Gtau_1dim.pdf
 .idea/
-/Include_Binning.py
-/InputData.csv
-/InputData_tx.csv
-/NoGit_Threading.py
-/OI_optimizing_Assignment1_ST-Image Corr. 1Dimention.py
-/OutputData.csv
-/Task1_summary_Paolo.zip
-/Working_slow_noBinning.py
-/DataToBeTried
-/StrategiesToSpeedUp
 /Export
-/DataHasi
 *.png
 *.svg
 *.csv
 *.pdf
-/ReadinHMPaolotonpy.py
 /data_Crop/
 /data_Average/
