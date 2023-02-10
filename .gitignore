@@ -8,3 +8,4 @@ data/
 *.pdf
 /data_Crop/
 /data_Average/
+!/docs/*.pdf
