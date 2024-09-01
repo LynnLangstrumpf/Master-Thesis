@@ -19,6 +19,7 @@ from numba import jit
 import scipy.fft
 import scipy
 import lmfit
+import argparse
 
 
 def findData():
@@ -97,7 +98,7 @@ def GeneratePlot_Gt_tau(PlottableSTICS):
     return
 
 
-def CalculateSTICS(xstart, xstop, LS):
+def CalculateSTICS(LS):
     """
     Saves the user input to be reproducible, calculates the STICS and shows it as contour plot. Exports this as picture and nparray.
     :param xstart:Userinput. Boarders for the analysis area
@@ -110,35 +111,17 @@ def CalculateSTICS(xstart, xstop, LS):
     global BinSeconds
     global Pixellength
     global identifier
-
-    LStoBeAnalyzed = LS[:,
-                     xstart:xstop] # excludes Vesicels etc depending on user input
-    #Now let the user check which time interval shall be considered (because of bleaching etc)
-    SumPlotArray_t(LStoBeAnalyzed)
-    tstart = input('Give starting time [ms]') or 0
-    file = open('AnalyzedData.csv', 'a')
-    file.write('tstart:' + str(tstart) + '\n')
-    file.close()
-    if not tstart == 0:
-        tstart = int(float(tstart)/ LineTime)
-    tstop = input('Give stopping time [ms]') or -1
-    file = open('AnalyzedData.csv', 'a')
-    file.write('tstop:' + str(tstop) + '\n')
-    file.close()
-    if not tstop == -1:
-        tstop = int(float(tstop)/ LineTime)
-    LStoBeAnalyzed = LStoBeAnalyzed[tstart:tstop, :]  # excludes depending on user input
     #--------------------------------------------------------------------------
     #calculation of the STICS function
     #--------------------------------------------------------------------------
     StartTimepoint = 0
     BinCount = 0
-    while StartTimepoint < LStoBeAnalyzed.shape[0]:
+    while StartTimepoint < LS.shape[0]:
         EndTimepoint = StartTimepoint + (Hz_Aquisition * BinSeconds)
-        if EndTimepoint + 1 > LStoBeAnalyzed.shape[0]:
+        if EndTimepoint + 1 > LS.shape[0]:
             break
         else:
-            LS_bin = LStoBeAnalyzed[StartTimepoint:EndTimepoint]
+            LS_bin = LS[StartTimepoint:EndTimepoint]
             #LS_bin = LS_bin-np.min(LS_bin)
             #LS_bin = LS_bin/np.max(LS_bin)
             b_w = np.array(scipy.fft.rfft2(LS_bin))
@@ -472,49 +455,27 @@ def FitACFunctionGetD(STICS,plotter):
     # file.close()
     return D
 
-
-def main():
-    global Hz_Aquisition
-    global LineTime
-    global BinSeconds
-    global Pixellength
-    global max_tau_Gaussian_in_ms
-    global identifier
-    #--------------------------------------------------------------------------
-    #those settings should be included in the GUI and need to be checked by the user
-    #--------------------------------------------------------------------------
-    max_tau_Gaussian_in_ms = 1000
-    BinSeconds = 1
-    Hz_Aquisition = 1800
-    LineTime = 1000 / Hz_Aquisition  # in millisec
-    Pixellength = 50  # nm
-    #--------------------------------------------------------------------------
-    # start of the analysis
-    #--------------------------------------------------------------------------
-    starttime = time.time()
-    print(starttime)
-    LS = np.array(readFile()) # File imported to Matrix
-    identifier = input('Give an identifier for flagging the data exports')
-    SumPlotArray_x(LS) # for excluding inhomogeneities
-    xstart = input('Give starting point [nm]') or 0
-    file = open('AnalyzedData.csv', 'a') # logging user settings for reproducibility
-    file.write('xstart:' + str(xstart) + '\n')
-    file.close()
-    if not xstart == 0:
-        xstart = int(xstart)
-        xstart = int(xstart / Pixellength)
-    xstop = input('Give stopping point [nm]') or -1
+def AnalysisFunction(LS, starttime, identifier, xstart, xstop, tstart, tstop):
     file = open('AnalyzedData.csv', 'a')
     file.write('Analysis File Identifier:' + identifier + '\n')
     file.write('xstop:' + str(xstop) + '\n')
     file.close()
-    if not xstop == -1:
-        xstop = int(xstop)
-        xstop = int(xstop / Pixellength)
+    #Calculate tvalues
+    file = open('AnalyzedData.csv', 'a')
+    file.write('tstart:' + str(tstart) + '\n')
+    file.close()
+    if not tstart == 0:
+        tstart = int(float(tstart)/ LineTime)
+    file = open('AnalyzedData.csv', 'a')
+    file.write('tstop:' + str(tstop) + '\n')
+    file.close()
+    if not tstop == -1:
+        tstop = int(float(tstop)/ LineTime)
+    LS = LS[tstart:tstop, :]  # excludes depending on user input
     #--------------------------------------------------------------------------
     # actual STICS calculation
     #--------------------------------------------------------------------------
-    ACCSTICS = CalculateSTICS(xstart, xstop, LS)
+    ACCSTICS = CalculateSTICS(LS)
     ACC = ACCSTICS[0]
     STICS = ACCSTICS[1]
     endtime = time.time()
@@ -564,6 +525,70 @@ def main():
     #--------------------------------------------------------------------------
     GaussianFit(STICS, timeline)
 
+def main(args):
+    global Hz_Aquisition
+    global LineTime
+    global BinSeconds
+    global Pixellength
+    global max_tau_Gaussian_in_ms
+    global identifier
+    #--------------------------------------------------------------------------
+    #those settings should be included in the GUI and need to be checked by the user
+    #--------------------------------------------------------------------------
+    max_tau_Gaussian_in_ms = 1000
+    BinSeconds = 1
+    Hz_Aquisition = 1800
+    LineTime = 1000 / Hz_Aquisition  # in millisec
+    Pixellength = 50  # nm
+    #--------------------------------------------------------------------------
+    # start of the analysis
+    #--------------------------------------------------------------------------
+    starttime = time.time()
+    print(starttime)
+    LS = np.array(readFile()) # File imported to Matrix
+    if not args.auto:
+        identifier = input('Give an identifier for flagging the data exports: ')
+        SumPlotArray_x(LS) # for excluding inhomogeneities
+        xstart = input('Give starting point [nm]') or 0
+        xstop = input('Give stopping point [nm]') or -1
+        if not xstop == -1:
+            xstop = int(xstop)
+            xstop = int(xstop / Pixellength)
+        LS = LS[:,
+                    xstart:xstop] # excludes Vesicels etc depending on user input
+    #Now let the user check which time interval shall be considered (because of bleaching etc)
+        SumPlotArray_t(LS)
+        tstart = input('Give starting time [ms]') or 0
+        tstop = input('Give stopping time [ms]') or -1
+        AnalysisFunction(LS,starttime,identifier,xstart,xstop,tstart,tstop)
+    else:
+        #AUTOMATIC ANALYSIS
+        argInput = pd.read_excel('./data/Analysis_Args.xlsx', sheet_name='Tabelle1',header=0)
+        for index, row in argInput.iterrows():
+            identifier = row['Name']
+            xstart = row['xstart']
+            xstop = row['xstop']
+            tstart = row['tstart']
+            tstop = row['tstop']
+            if not xstop == -1:
+                xstop = int(xstop)
+                xstop = int(xstop / Pixellength)
+            LS = LS[:,
+                    xstart:xstop] # excludes Vesicels etc depending on user input
+    #Now let the user check which time interval shall be considered (because of bleaching etc)
+            AnalysisFunction(LS,starttime,identifier,xstart,xstop,tstart,tstop)
+    file = open('AnalyzedData.csv', 'a') # logging user settings for reproducibility
+    file.write('xstart:' + str(xstart) + '\n')
+    file.close()
+    if not xstart == 0:
+        xstart = int(xstart)
+        xstart = int(xstart / Pixellength)
+    #Calculate tstart
+    
+    
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-a', '--auto', help='Start automatic parsing', action='store_true')
+    args = parser.parse_args()
+    main(args)
