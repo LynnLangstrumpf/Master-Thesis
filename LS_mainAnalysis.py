@@ -578,8 +578,9 @@ def main(args):
     #--------------------------------------------------------------------------
     starttime = time.time()
     print(starttime)
-    LS = np.array(readFile()) # File imported to Matrix
+    LSOrig = np.array(readFile()) # File imported to Matrix
     if not args.auto: #manual analysis
+        LS = LSOrig
         ShowPlot = True
         identifier = input('Give an identifier for flagging the data exports: ')
         SumPlotArray_x(LS) # for excluding inhomogeneities
@@ -599,6 +600,7 @@ def main(args):
         #AUTOMATIC ANALYSIS
         argInput = pd.read_excel('./data/Analysis_Args.xlsx', sheet_name='Tabelle1',header=0)
         for index, row in argInput.iterrows():
+            LS = LSOrig
             identifier = row['Name']
             xstart = row['xstart']
             xstop = row['xstop']
