@@ -21,6 +21,8 @@ import scipy
 import lmfit
 import argparse
 
+HistogramList = list()
+ShowPlot = False
 
 def findData():
     """
@@ -77,6 +79,7 @@ def GeneratePlot_Gt_tau(PlottableSTICS):
     """
     global LineTime
     global identifier
+    global ShowPlot
 
     xAxis = []
     yAxis = []
@@ -93,7 +96,8 @@ def GeneratePlot_Gt_tau(PlottableSTICS):
     plt.ylabel('G(\u03C4)')
     plt.grid(True)
     plt.xscale('log')
-    plt.show()
+    if ShowPlot:
+        plt.show()
     plt.savefig('Gtau_1dim.svg', dpi=600)
     return
 
@@ -111,6 +115,7 @@ def CalculateSTICS(LS):
     global BinSeconds
     global Pixellength
     global identifier
+    global ShowPlot
     #--------------------------------------------------------------------------
     #calculation of the STICS function
     #--------------------------------------------------------------------------
@@ -177,7 +182,8 @@ def CalculateSTICS(LS):
     cbar = fig1.colorbar(cs)
     cbar.ax.set_ylabel('STICS function')
     fig1.savefig('Export/'+identifier + '_STICS_HM.jpeg', dpi=300)
-    plt.show()
+    if ShowPlot:
+        plt.show()
     #--------------------------------------------------------------------------
     # getting the autocorrelation Curve: take x=0 part of STICS and normalize
     #--------------------------------------------------------------------------
@@ -221,6 +227,7 @@ def GaussianFit(STICS, timeline):
     global LineTime
     global Pixellength
     global identifier
+    global ShowPlot
 
     maxTimelineIndex = int(max_tau_Gaussian_in_ms / LineTime)
     Tau_MSD = []
@@ -228,7 +235,8 @@ def GaussianFit(STICS, timeline):
     STICSMSD = np.flipud(STICS)
     x = np.array(range(STICS.shape[1]))
     plt.plot(x, STICSMSD[0, :])
-    plt.show()
+    if ShowPlot:
+        plt.show()
     plt.clf()
     x = np.array(range(len(STICS[0, :])))
     x = x.astype(float)
@@ -269,7 +277,8 @@ def GaussianFit(STICS, timeline):
                 tauaxis.append(tau)
         if tau < 1: # as optical user feedback of the fitting quality
             plt.plot(x, result.best_fit)
-            plt.show()
+            if ShowPlot:
+                plt.show()
             plt.clf()
         print(tauindex)
     Tau_sigma_Ex = pd.DataFrame(Tau_sigma, columns=['tau_s', 'sigma'])
@@ -293,7 +302,8 @@ def GaussianFit(STICS, timeline):
     ax.set_zlabel('tau')
     fig1 = plt.gcf()
     fig1.savefig('Export/'+identifier + '_Gaussians3D.jpeg', dpi=300)
-    plt.show()
+    if ShowPlot:
+        plt.show()
     #--------------------------------------------------------------------------
     #Averaging the MSD in log-bins, setting the units to s and µm² and exporting the MSD curve as csv
     #--------------------------------------------------------------------------
@@ -322,8 +332,9 @@ def GaussianFit(STICS, timeline):
     Tau_MSD = np.array(MSDMean)
     Tau_MSD_Ex = pd.DataFrame(Tau_MSD, columns=['tau_s', 'MSD_µm^2','SD'])
     Tau_MSD_Ex.to_csv(path_or_buf='Export/'+identifier + '_TauMSD.csv', header=['tau_s', 'MSD_µm^2', 'SD'], sep=';', index=False)
-    plt.errorbar(Tau_MSD[:, 0], Tau_MSD[:, 1])
-    plt.show()
+    if ShowPlot:
+        plt.errorbar(Tau_MSD[:, 0], Tau_MSD[:, 1])
+        plt.show()
     return
 
 
@@ -336,6 +347,7 @@ def SumPlotArray_x(LS):
     :return: None
     """
     global identifier
+    global ShowPlot
 
     @jit(nopython=True)
     def Calc_x_yAxis_in_Numba(Pixellenght, LS):
@@ -359,7 +371,8 @@ def SumPlotArray_x(LS):
     plt.grid(True)
     fig1 = plt.gcf()
     fig1.savefig('Export/'+identifier + '_Intensity_x_Plot.png', dpi=600)
-    plt.show()
+    if ShowPlot:
+        plt.show()
     plt.clf()
     return
 
@@ -374,6 +387,7 @@ def SumPlotArray_t(LS):
     """
     global LineTime
     global identifier
+    global ShowPlot
 
     @jit(nopython=True)
     def Calc_x_yAxis_in_Numba(Pixellenght, LS):
@@ -400,7 +414,8 @@ def SumPlotArray_t(LS):
     fig1 = plt.gcf()
     #fig1.savefig('Export/' + identifier + '_Intensity_t_Plot.png',dpi=600)
     fig1.savefig('Export/'+identifier + '_Intensity_t_Plot.svg')
-    plt.show()
+    if ShowPlot:
+        plt.show()
     plt.clf()
     return
 
@@ -421,6 +436,7 @@ def FitACFunctionGetD(STICS,plotter):
     :return: D
     """
     global identifier
+    global ShowPlot
     STICS = np.array(STICS[:, :])
     taus = STICS[1:, 0]
     #normalizing the data to 0 to 1
@@ -440,22 +456,24 @@ def FitACFunctionGetD(STICS,plotter):
     params = dict(result.values)
     D = params['D']
     if plotter == 1:
-        plt.plot(taus, result.best_fit)
-        plt.xscale('log')
-        plt.xlabel('time [ms]')
-        plt.ylabel('G(tau) normalized')
-        text = 'D when calculated by AC over x=0:\n' + str(D/1000) + 'µm^2/s'
-        plt.text(1, 0, text, fontsize=10)
-        fig1 = plt.gcf()
-        fig1.savefig('Export/'+identifier + '_AC_Fit.jpeg', dpi=300)
-        plt.show()
-        plt.clf()
+            plt.plot(taus, result.best_fit)
+            plt.xscale('log')
+            plt.xlabel('time [ms]')
+            plt.ylabel('G(tau) normalized')
+            text = 'D when calculated by AC over x=0:\n' + str(D/1000) + 'µm^2/s'
+            plt.text(1, 0, text, fontsize=10)
+            fig1 = plt.gcf()
+            fig1.savefig('Export/'+identifier + '_AC_Fit.jpeg', dpi=300)
+            if ShowPlot:
+                plt.show()
+            plt.clf()
     # file = open('AnalyzedData.csv', 'a')
     # file.write('D when calculated by AC over x=0:\n' + str(D/1000) + 'µm^2/s')
     # file.close()
     return D
 
 def AnalysisFunction(LS, starttime, identifier, xstart, xstop, tstart, tstop):
+    global HistogramList
     file = open('AnalyzedData.csv', 'a')
     file.write('Analysis File Identifier:' + identifier + '\n')
     file.write('xstop:' + str(xstop) + '\n')
@@ -472,6 +490,9 @@ def AnalysisFunction(LS, starttime, identifier, xstart, xstop, tstart, tstop):
     if not tstop == -1:
         tstop = int(float(tstop)/ LineTime)
     LS = LS[tstart:tstop, :]  # excludes depending on user input
+    #Intensity Analysis
+    IntHist = np.histogram(LS.flatten(), bins=50, range=(0,50), density=False)
+    HistogramList.append((identifier,IntHist[0]))
     #--------------------------------------------------------------------------
     # actual STICS calculation
     #--------------------------------------------------------------------------
@@ -532,6 +553,8 @@ def main(args):
     global Pixellength
     global max_tau_Gaussian_in_ms
     global identifier
+    global HistogramList
+    global ShowPlot
     #--------------------------------------------------------------------------
     #those settings should be included in the GUI and need to be checked by the user
     #--------------------------------------------------------------------------
@@ -546,7 +569,8 @@ def main(args):
     starttime = time.time()
     print(starttime)
     LS = np.array(readFile()) # File imported to Matrix
-    if not args.auto:
+    if not args.auto: #manual analysis
+        ShowPlot = True
         identifier = input('Give an identifier for flagging the data exports: ')
         SumPlotArray_x(LS) # for excluding inhomogeneities
         xstart = int(input('Give starting point [nm]')) or 0
@@ -581,8 +605,12 @@ def main(args):
     if not xstart == 0:
         xstart = int(xstart)
         xstart = int(xstart / Pixellength)
+    filename = identifier.split('_TP')[0]
+    data_dict = {identifier: values for identifier, values in HistogramList}
+    pd.DataFrame(data_dict).to_csv(f'Export/{filename}_Pixelhistogram.csv')
     #Calculate tstart
     
+
     
 
 if __name__ == "__main__":
