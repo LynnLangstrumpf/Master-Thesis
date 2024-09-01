@@ -153,6 +153,13 @@ def CalculateSTICS(LS):
     hmapSTIC = np.c_[leftSTICs, rightSTICs]
     hmapSTIC = hmapSTIC[tauBorder:, :]
     hmapSTICfw = hmapSTIC
+    #BEGIN PASTE
+    xminhalf = int(40/2) # TODO To be defined further. HARDCODED
+    middle = round(hmapSTIC.shape[1]/2)
+    xlower = middle - xminhalf
+    xupper = middle + xminhalf
+    hmapSTIC = hmapSTIC[:,xlower:xupper]
+    #END PASTE
     hmapSTIC = np.array(hmapSTIC)
     np.save('Export/'+identifier + '_HM.npy',hmapSTIC)
     plt.clf()
@@ -445,6 +452,7 @@ def FitACFunctionGetD(STICS,plotter):
     AC = (AC - ACmin)
     ACmax = np.max(AC)
     AC = AC/ACmax
+    plt.clf()
     if plotter == 1:
         plt.plot(taus, AC)
     gmodel = lmfit.Model(ACFunction2D)
@@ -456,17 +464,17 @@ def FitACFunctionGetD(STICS,plotter):
     params = dict(result.values)
     D = params['D']
     if plotter == 1:
-            plt.plot(taus, result.best_fit)
-            plt.xscale('log')
-            plt.xlabel('time [ms]')
-            plt.ylabel('G(tau) normalized')
-            text = 'D when calculated by AC over x=0:\n' + str(D/1000) + 'µm^2/s'
-            plt.text(1, 0, text, fontsize=10)
-            fig1 = plt.gcf()
-            fig1.savefig('Export/'+identifier + '_AC_Fit.jpeg', dpi=300)
-            if ShowPlot:
-                plt.show()
-            plt.clf()
+        plt.plot(taus, result.best_fit)
+        plt.xscale('log')
+        plt.xlabel('time [ms]')
+        plt.ylabel('G(tau) normalized')
+        text = 'D when calculated by AC over x=0:\n' + str(D/1000) + 'µm^2/s'
+        plt.text(1, 0, text, fontsize=10)
+        fig1 = plt.gcf()
+        fig1.savefig('Export/'+identifier + '_AC_Fit.jpeg', dpi=300)
+        if ShowPlot:
+            plt.show()
+        plt.clf()
     # file = open('AnalyzedData.csv', 'a')
     # file.write('D when calculated by AC over x=0:\n' + str(D/1000) + 'µm^2/s')
     # file.close()
@@ -491,14 +499,14 @@ def AnalysisFunction(LS, starttime, identifier, xstart, xstop, tstart, tstop):
         tstop = int(float(tstop)/ LineTime)
     LS = LS[tstart:tstop, :]  # excludes depending on user input
     #Intensity Analysis
-    IntHist = np.histogram(LS.flatten(), bins=50, range=(0,50), density=False)
+    IntHist = np.histogram(LS.flatten(), bins=255, range=(0,255), density=False)
     HistogramList.append((identifier,IntHist[0]))
     #--------------------------------------------------------------------------
     # actual STICS calculation
     #--------------------------------------------------------------------------
     ACCSTICS = CalculateSTICS(LS)
     ACC = ACCSTICS[0]
-    STICS = ACCSTICS[1]
+    STICS = ACCSTICS[1] 
     endtime = time.time()
     print(endtime - starttime)
     # -------------------------------------------------------------------------
