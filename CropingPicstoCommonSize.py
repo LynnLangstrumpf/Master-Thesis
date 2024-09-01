@@ -70,6 +70,8 @@ def loadingArrayAndCroppingToCommonSize(path_LS):
         plt.ylim(1, )
         plt.yscale('log')
         fig1 = plt.gcf()
+        cbar = fig1.colorbar(cs)
+        cbar.ax.set_ylabel('STICS function')
         fig1.savefig('Export/'+HM+'cropped.jpeg', dpi=300)
         print(HM,'processed')
         plt.clf()

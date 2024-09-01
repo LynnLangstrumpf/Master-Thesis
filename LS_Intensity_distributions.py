@@ -35,14 +35,15 @@ def findData():
 def readFile():
     """
     reads in the tif file of the LS to a ndarray of pixel intensities
-    :return: full Line scan as Matrix240830_Sugar_CS2_TP (space x time)
+    :return: full Line scan as Matrix (space x time)
     """
     paths_LS = findData()
     file = open('AnalyzedData.csv', 'a')
     file.write(str(paths_LS)+'\n')
     file.close()
     LS = skio.imread(paths_LS[0])  # starts with the first tif (could be cast into a loop for processing data batches)
-    return LS #TODO hier sollte das Bild in LS geladen sein. es sollte ein 16 bit GS image sein.
+    return LS
+
 
 def Averaging_Gtau_over_Tau(BinnedSTICS):
     """
@@ -167,7 +168,18 @@ def CalculateSTICS(xstart, xstop, LS):
     hmapSTICfw = hmapSTIC
     hmapSTIC = np.array(hmapSTIC)
     np.save('Export/'+identifier + '_HM.npy',hmapSTIC)
+    #Intensity Analysis
+    IntHist = np.histogram(LStoBeAnalyzed.flatten(), bins=50, range=(0,50), density=False)
+    plt.hist(LStoBeAnalyzed.flatten(), bins=50, range=(0,50), density=False)
+    plt.title('Intensity-Histogramm')
+    plt.xlabel('Intensity [A.U.]')
+    plt.ylabel('Pixel number')
+    plt.grid(True)
+    fig1 = plt.gcf()
+    fig1.savefig('Export/' + identifier + '_Intensity_Histogramm.png', dpi=600)
+    plt.show()
     plt.clf()
+    np.savetxt("HM-Int.csv", IntHist[0], delimiter=",")
     cs = plt.contourf(np.flipud(hmapSTIC), cmap='inferno', levels=100)
     cs.axes.set_xlabel('x position [µm]')
     cs.axes.set_ylabel('tau [ms]')
@@ -515,54 +527,6 @@ def main():
     # actual STICS calculation
     #--------------------------------------------------------------------------
     ACCSTICS = CalculateSTICS(xstart, xstop, LS)
-    ACC = ACCSTICS[0]
-    STICS = ACCSTICS[1]
-    endtime = time.time()
-    print(endtime - starttime)
-    # -------------------------------------------------------------------------
-    # Bins and exports the AC curve as csv for the user
-    # -------------------------------------------------------------------------
-    ACC = Generate_timeline(ACC)
-    ACC = ACC[1:, :]  # remove tau=0 element as this contains the sum of the FFT
-    timeline = ACC[:, 0]
-    PlotLog = int(np.log10(BinSeconds * 1000))
-    Bins = np.logspace(-1, PlotLog, num=100, endpoint=False, base=10)
-    StartIndex = 0
-    Tau_mean_previous = 0
-    BinnedSTICSMean = []
-    for Bin in Bins:
-        for ACindex, AC in enumerate(timeline):
-            if AC >= Bin:
-                Endindex = ACindex
-                break
-        Tau_mean = np.mean(timeline[StartIndex:Endindex + 1])
-        G_mean = np.mean(ACC[StartIndex:Endindex + 1, 1])
-        G_SD = np.std(ACC[StartIndex:Endindex + 1, 1])
-        if not Tau_mean_previous == Tau_mean:
-            BinnedSTICSMean.append([Tau_mean, G_mean, G_SD])
-        Tau_mean_previous = Tau_mean
-        StartIndex = Endindex
-    BinnedSTICSMean = np.array(BinnedSTICSMean)
-    xNullEx = pd.DataFrame(BinnedSTICSMean,
-                           columns=['tau', 'G_tau_Average', 'SD'])
-    xNullEx.to_csv(path_or_buf='Export/'+identifier + '_xNullEx.csv',
-                   header=['tau', 'AC_Average', 'SD'], sep=';', index=False)
-    ACC=BinnedSTICSMean[:, :2]
-    # -------------------------------------------------------------------------
-    # Fitting of the Diffusion models over the AC curve for D extraction
-    # -------------------------------------------------------------------------
-    AreatoFitms = BinSeconds*1000 # to only look at a certain area for fitting: cut the binned array accordingly
-    absolute_val_array = np.abs(ACC[:, :1] - AreatoFitms)
-    smallest_difference_index = absolute_val_array.argmin()
-    STICforD = ACC[:smallest_difference_index, :]
-    D = FitACFunctionGetD(STICforD, 1)
-    print(D, 'nm^2/ms')
-    D = D/1000
-    print(D, 'µm^2/s')
-    #--------------------------------------------------------------------------
-    # Gaussian fitting and MSD extraction
-    #--------------------------------------------------------------------------
-    GaussianFit(STICS, timeline)
 
 
 if __name__ == "__main__":

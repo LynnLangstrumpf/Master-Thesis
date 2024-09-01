@@ -79,8 +79,8 @@ def GaussianFit(STICS, timeline):
     for tauindex, tau in enumerate(timeline):
         y = np.array(STICSMSD[tauindex, :])
         y = y.astype(float)
-        #y = y - np.min(y)
-        #y = y / np.max(y)
+        y = y - np.min(y)
+        y = y / np.max(y)
         tau = tau.astype(float)
         plt.plot(x, y)
         cmodel = lmfit.models.ConstantModel()
@@ -107,6 +107,15 @@ def GaussianFit(STICS, timeline):
                 tauaxis.append(tau)
         if tau < 1:
             plt.plot(x, result.best_fit)
+            fig1 = plt.gcf()
+            fig1.savefig('Export/' + identifier + '_Gaussianfirst.jpeg', dpi=300)
+            plt.show()
+            plt.clf()
+            plt.plot(x, result.best_fit)
+            plt.plot(x, result.residual)
+            fig1 = plt.gcf()
+            fig1.savefig('Export/' + identifier + '_Gaussianresidual.jpeg',
+                         dpi=300)
             plt.show()
             plt.clf()
         print(tauindex)
