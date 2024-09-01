@@ -549,13 +549,13 @@ def main(args):
     if not args.auto:
         identifier = input('Give an identifier for flagging the data exports: ')
         SumPlotArray_x(LS) # for excluding inhomogeneities
-        xstart = input('Give starting point [nm]') or 0
-        xstop = input('Give stopping point [nm]') or -1
+        xstart = int(input('Give starting point [nm]')) or 0
+        xstop = int(input('Give stopping point [nm]')) or -1
         if not xstop == -1:
-            xstop = int(xstop)
             xstop = int(xstop / Pixellength)
-        LS = LS[:,
-                    xstart:xstop] # excludes Vesicels etc depending on user input
+        if not xstart == 0:
+            xstart = int(xstart / Pixellength)
+        LS = LS[:,xstart:xstop] # excludes Vesicels etc depending on user input
     #Now let the user check which time interval shall be considered (because of bleaching etc)
         SumPlotArray_t(LS)
         tstart = input('Give starting time [ms]') or 0
@@ -570,11 +570,9 @@ def main(args):
             xstop = row['xstop']
             tstart = row['tstart']
             tstop = row['tstop']
-            if not xstop == -1:
-                xstop = int(xstop)
-                xstop = int(xstop / Pixellength)
-            LS = LS[:,
-                    xstart:xstop] # excludes Vesicels etc depending on user input
+            xstart = int(xstart / Pixellength)
+            xstop = int(xstop / Pixellength)
+            LS = LS[:,xstart:xstop] # excludes Vesicels etc depending on user input
     #Now let the user check which time interval shall be considered (because of bleaching etc)
             AnalysisFunction(LS,starttime,identifier,xstart,xstop,tstart,tstop)
     file = open('AnalyzedData.csv', 'a') # logging user settings for reproducibility
