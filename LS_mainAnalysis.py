@@ -21,8 +21,9 @@ import scipy
 import lmfit
 import argparse
 
-HistogramList = list()
+HistogramList = []
 ShowPlot = False
+DValues = []
 
 def findData():
     """
@@ -153,13 +154,11 @@ def CalculateSTICS(LS):
     hmapSTIC = np.c_[leftSTICs, rightSTICs]
     hmapSTIC = hmapSTIC[tauBorder:, :]
     hmapSTICfw = hmapSTIC
-    #BEGIN PASTE
     xminhalf = int(40/2) # TODO To be defined further. HARDCODED
     middle = round(hmapSTIC.shape[1]/2)
     xlower = middle - xminhalf
     xupper = middle + xminhalf
     hmapSTIC = hmapSTIC[:,xlower:xupper]
-    #END PASTE
     hmapSTIC = np.array(hmapSTIC)
     np.save('Export/'+identifier + '_HM.npy',hmapSTIC)
     plt.clf()
@@ -482,6 +481,7 @@ def FitACFunctionGetD(STICS,plotter):
 
 def AnalysisFunction(LS, starttime, identifier, xstart, xstop, tstart, tstop):
     global HistogramList
+    global DValues
     file = open('AnalyzedData.csv', 'a')
     file.write('Analysis File Identifier:' + identifier + '\n')
     file.write('xstop:' + str(xstop) + '\n')
@@ -549,6 +549,7 @@ def AnalysisFunction(LS, starttime, identifier, xstart, xstop, tstart, tstop):
     print(D, 'nm^2/ms')
     D = D/1000
     print(D, 'µm^2/s')
+    DValues.append((identifier,D))
     #--------------------------------------------------------------------------
     # Gaussian fitting and MSD extraction
     #--------------------------------------------------------------------------
@@ -563,6 +564,7 @@ def main(args):
     global identifier
     global HistogramList
     global ShowPlot
+    global DValues
     #--------------------------------------------------------------------------
     #those settings should be included in the GUI and need to be checked by the user
     #--------------------------------------------------------------------------
@@ -614,6 +616,7 @@ def main(args):
         xstart = int(xstart)
         xstart = int(xstart / Pixellength)
     filename = identifier.split('_TP')[0]
+    np.savetxt(f'Export/{filename}_ACFit', DValues, delimiter=",", fmt='%s')
     data_dict = {identifier: values for identifier, values in HistogramList}
     pd.DataFrame(data_dict).to_csv(f'Export/{filename}_Pixelhistogram.csv')
     #Calculate tstart
